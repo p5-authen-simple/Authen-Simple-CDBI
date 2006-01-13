@@ -20,7 +20,7 @@ __PACKAGE__->options({
     },
     password => {
         type     => Params::Validate::SCALAR,
-        password => 'password',
+        default  => 'password',
         optional => 1
     }
 });
@@ -75,9 +75,9 @@ sub check {
         return 0;
     }
 
-    unless ( $encryped = $user->get($pcolumn) ) {
+    unless ( defined( $encryped = $user->get($pcolumn) ) ) {
 
-        $self->log->debug( qq/User '$username' has no encypted password./ )
+        $self->log->debug( qq/Encrypted password for user '$username' was not found with class '$class'./ )
           if $self->log;
 
         return 0;
