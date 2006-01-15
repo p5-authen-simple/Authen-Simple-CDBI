@@ -4,9 +4,10 @@ use strict;
 use warnings;
 use base 'Authen::Simple::Adapter';
 
+use Carp             qw[];
 use Params::Validate qw[];
 
-our $VERSION = 0.1;
+our $VERSION = 0.2;
 
 __PACKAGE__->options({
     class => {
@@ -25,49 +26,38 @@ __PACKAGE__->options({
     }
 });
 
-sub check {
-    my ( $self, $username, $password ) = @_;
+sub init {
+    my ( $self, $params ) = @_;
 
-    my $class    = $self->class;
-    my $ucolumn  = $self->username;
-    my $pcolumn  = $self->password;
-    my $encryped = undef;
+    my $class    = $params->{class};
+    my $username = $params->{username};
+    my $password = $params->{password};
 
     unless ( eval "require $class;" ) {
-
-        $self->log->error( qq/Failed to require class '$class'. Reason: '$@'/ )
-          if $self->log;
-
-        return 0;
+        Carp::croak( qq/Failed to require class '$class'. Reason: '$@'/ );
     }
 
     unless ( $class->isa('Class::DBI') ) {
-
-        $self->log->error( qq/Class '$class' is not a subclass of 'Class::DBI'./ )
-          if $self->log;
-
-        return 0;
+        Carp::croak( qq/Class '$class' is not a subclass of 'Class::DBI'./ );
     }
 
-    unless ( $class->find_column($ucolumn) ) {
-
-        $self->log->error( qq/Class '$class' does not have a username column named '$ucolumn'/ )
-          if $self->log;
-
-        return 0;
+    unless ( $class->find_column($username) ) {
+        Carp::croak( qq/Class '$class' does not have a username column named '$username'/ );
     }
 
-    unless ( $class->find_column($pcolumn) ) {
-
-        $self->log->error( qq/Class '$class' does not have a password column named '$pcolumn'/ )
-          if $self->log;
-
-        return 0;
+    unless ( $class->find_column($password) ) {
+        Carp::croak( qq/Class '$class' does not have a password column named '$password'/ );
     }
 
-    my $user = $class->retrieve( $ucolumn => $username );
+    return $self->SUPER::init($params);
+}
 
-    unless ( defined $user ) {
+sub check {
+    my ( $self, $username, $password ) = @_;
+
+    my ( $class, $user, $encrypted ) = ( $self->class, undef, undef );
+
+    unless ( $user = $class->retrieve( $self->username => $username ) ) {
 
         $self->log->debug( qq/User '$username' was not found with class '$class'./ )
           if $self->log;
@@ -75,15 +65,17 @@ sub check {
         return 0;
     }
 
-    unless ( defined( $encryped = $user->get($pcolumn) ) ) {
+    $encrypted = $user->get( $self->password );
 
-        $self->log->debug( qq/Encrypted password for user '$username' was not found with class '$class'./ )
+    unless ( defined $encrypted && length $encrypted ) {
+
+        $self->log->debug( qq/Encrypted password for user '$username' is null./ )
           if $self->log;
 
         return 0;
     }
 
-    unless ( $self->check_password( $password, $encryped ) ) {
+    unless ( $self->check_password( $password, $encrypted ) ) {
 
         $self->log->debug( qq/Failed to authenticate user '$username'. Reason: 'Invalid credentials'/ )
           if $self->log;
@@ -103,13 +95,13 @@ __END__
 
 =head1 NAME
 
-Authen::Simple::CDBI - Simple CDBI authentication
+Authen::Simple::CDBI - Simple Class::DBI authentication
 
 =head1 SYNOPSIS
 
     use Authen::Simple::CDBI;
     
-    my $cdbi = Authen::Simple::DBI->new(
+    my $cdbi = Authen::Simple::CDBI->new(
         class => 'MyApp::Model::User'
     );
     
@@ -133,7 +125,7 @@ Authen::Simple::CDBI - Simple CDBI authentication
 
 =head1 DESCRIPTION
 
-CDBI authentication.
+Class::DBI authentication.
 
 =head1 METHODS
 

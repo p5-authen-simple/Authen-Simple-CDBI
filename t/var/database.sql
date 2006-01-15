@@ -4,8 +4,6 @@ CREATE TABLE users (
   CONSTRAINT pk_users PRIMARY KEY (username)
 );
 
-CREATE UNIQUE INDEX ix_users_username ON users (username);
-
 INSERT INTO users VALUES ( 'plain',        'plain'                                    );
 INSERT INTO users VALUES ( 'crypt',        'lk9Mh5KHGjAaM'                            );
 INSERT INTO users VALUES ( 'md5',          '$1$NRe32ijZ$THIS7aDH.e093oDOGD10M/'       );
